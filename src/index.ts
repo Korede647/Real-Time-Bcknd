@@ -4,13 +4,12 @@ import dotenv from "dotenv"
 import { errorHandler } from "./utils/errorHandler.util";
 import { WebSocket } from "ws";
 import path from "path";
+import http from "http"
 
 dotenv.config()
 
 
 const portEnv = process.env.PORT;
-
-new WebSocket('ws://localhost:8000');
 
 if(!portEnv){
     console.error("Error: PORT is not defined in .env file.")
@@ -31,41 +30,28 @@ const corsOptions = {
     methods: "GET, HEAD, PUT, PATCH, POST, DELETE",
 }
 
-app.use("/", express.static(path.resolve(__dirname, "./client")))
+const server = http.createServer(app)
+const wss = new WebSocket.Server({ server });
 
-const ws = new WebSocket.Server({
-    port: 8000
-})
+wss.on("connection", (ws: WebSocket) => {
+  console.log("New client connected");
 
-ws.on("connection", (ws: WebSocket) => {
-    console.log('New client connected');
-    ws.on("message", (message: string) => {
-        ws.send(`Welcome to the Chat Room. ${message} `)
-    })
-})
-ws.on('close', () => {
-    console.log('Client disconnected');
+  ws.on("message", (message: any) => {
+    // Convert the message to a string if necessary
+    const msgStr = message.toString();
+    ws.send(`Welcome to the Chat Room.`);
   });
 
-const wss = new WebSocket('ws://localhost:8000');
-
-wss.on("open", () => {
-    console.log("Connected to Server")
-})
-
-wss.on("message", (message: string) => {
-    console.log(`Received message: ${message}`);
-})
-
-wss.on("close", () => {
-    console.log('Disconnected from Server');
-})
+  ws.on("close", () => {
+    console.log("Client disconnected");
+  });
+});
 
 
 app.use(cors(corsOptions))
 app.use(express.json())
-
 app.use(errorHandler)
-app.listen(PORT, () => {
+
+server.listen(PORT, () => {
     console.log(`Server running on Port ${PORT}`)
 })
